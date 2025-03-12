@@ -1,0 +1,38 @@
+app:
+  name: SQL Query Assistant
+  version: 1.0.0
+  environment: ${ENVIRONMENT}
+
+llm:
+  model: gpt-3.5-turbo
+  temperature: 0.7
+  max_tokens: 2000
+  streaming: false
+  retry_attempts: 3
+  timeout: 30
+
+database:
+  default_path: chinook.db
+  timeout: 30
+  connection_retries: 3
+  pool_size: 5
+  max_overflow: 10
+  pool_timeout: 30
+  pool_recycle: 3600
+
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: logs/sql_assistant.log
+  max_size: 10485760  # 10MB
+  backup_count: 5
+  console_logging: true
+
+api:
+  host: 0.0.0.0
+  port: 8000
+  debug: false
+  rate_limit: 100
+  timeout: 30
+  cors_origins: ["*"]
+  swagger_ui: true

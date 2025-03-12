@@ -1,0 +1,11 @@
+langchain-community
+langchain-core
+langchain-openai
+langgraph
+python-dotenv
+fastapi
+uvicorn
+pyyaml
+jinja2
+aiofiles
+sqlalchemy
