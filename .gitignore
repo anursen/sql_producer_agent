@@ -25,6 +25,7 @@ venv/
 env/
 ENV/
 .env
+.venv
 
 # IDE
 .idea/
@@ -49,3 +50,7 @@ Chinook.db
 # Distribution
 dist/
 build/
+
+
+# PostgreSQL data directory
+postgres/

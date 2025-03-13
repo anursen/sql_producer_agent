@@ -1,5 +1,8 @@
-db_path = "sql_store.db"
+
 import sqlite3
+import os
+
+db_path = db_path = os.path.join(os.path.dirname(__file__), "Chinook.db")
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 

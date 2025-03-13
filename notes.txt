@@ -1,0 +1,1 @@
+We should remove server.json because its just used for dev purposes
