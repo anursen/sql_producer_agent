@@ -58,5 +58,9 @@ class Config:
     def api_config(self) -> Dict[str, Any]:
         return self._config.get('api', {})
 
+    @property
+    def evaluation_config(self) -> Dict[str, Any]:
+        return self._config.get('evaluation', {})
+
 # Global config instance
 config = Config()

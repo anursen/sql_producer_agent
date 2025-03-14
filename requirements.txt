@@ -10,4 +10,8 @@ jinja2
 aiofiles
 sqlalchemy
 psycopg[binary,pool]
-psycopg_pool>=3.0.0
+psycopg_pool
+langgraph-checkpoint-postgres
+scikit-learn
+pandas
+numpy

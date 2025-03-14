@@ -51,6 +51,12 @@ Chinook.db
 dist/
 build/
 
-
 # PostgreSQL data directory
 postgres/
+
+# MongoDB data directory
+mongodb/
+
+# PgAdmin data
+pgadmin/
+pgadmin-data/

@@ -1,0 +1,10 @@
+Open pgAdmin (http://localhost:5050)
+Login with:
+Email: admin@admin.com
+Password: admin
+Try adding a new PostgreSQL server:
+Host: sql_producer_postgres
+Port: 5432
+Username: postgres
+Password: password
+Database: sqlproducer
