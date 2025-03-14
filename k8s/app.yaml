@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-producer
+  namespace: sql-producer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sql-producer
+  template:
+    metadata:
+      labels:
+        app: sql-producer
+    spec:
+      containers:
+        - name: sql-producer
+          image: sql-producer:latest  # You'll need to build and push this image
+          ports:
+            - containerPort: 8000
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sql-producer-secrets
+                  key: openai-api-key
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: MONGODB_HOST
+              value: mongodb
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sql-producer
+  namespace: sql-producer
+spec:
+  selector:
+    app: sql-producer
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: LoadBalancer
