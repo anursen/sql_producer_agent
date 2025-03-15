@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Setup database
-RUN python utils/setup_chinook.py
+#RUN python utils/setup_chinook.py
 
 # Expose port
 EXPOSE 8000

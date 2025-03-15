@@ -60,3 +60,7 @@ mongodb/
 # PgAdmin data
 pgadmin/
 pgadmin-data/
+
+
+# Kubernetes
+k8s/
