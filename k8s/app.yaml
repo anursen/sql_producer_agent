@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: sql-producer
-          image: sql-producer:latest  # You'll need to build and push this image
+          image: adamwnj/sql-producer:latest  # Using your Docker Hub registry
           ports:
             - containerPort: 8000
           env:
