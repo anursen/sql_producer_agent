@@ -64,3 +64,5 @@ pgadmin-data/
 
 # Kubernetes
 k8s/
+k8s/secrets.yaml
+k8s/app.yaml
