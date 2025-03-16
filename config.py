@@ -62,5 +62,13 @@ class Config:
     def evaluation_config(self) -> Dict[str, Any]:
         return self._config.get('evaluation', {})
 
+    @property
+    def templates_config(self) -> Dict[str, Any]:
+        return self._config.get('templates', {})
+    
+    @property
+    def tool_get_data_dictionary(self) -> Dict[str, Any]:
+        return self._config.get('tool_get_data_dictionary', {})
+
 # Global config instance
 config = Config()

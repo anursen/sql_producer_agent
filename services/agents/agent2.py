@@ -1,8 +1,9 @@
-import sqlite3
 import os
 import sys
 import pandas as pd
 import numpy as np
+from pathlib import Path
+import asyncio
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -10,23 +11,32 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
 
-from langchain_openai import ChatOpenAI
-from langchain_community.utilities import SQLDatabase
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langgraph.graph import START, END, Graph
-from typing import Dict, Any
+from langgraph.graph import START, StateGraph
+from langgraph.prebuilt import tools_condition, ToolNode
+from typing import Dict, Any, List
 from config import config
-import yaml
-from pathlib import Path
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.tools import tool
 from langchain.chat_models import init_chat_model
 
 
-def load_config():
-    config_path = Path(__file__).parent.parent.parent / "config.yaml"
-    with open(config_path) as f:
-        return yaml.safe_load(f)
+@tool("get_schema")
+def get_schema(database_path: str) -> str:
+    """Get the database schema information"""
+    # Placeholder for schema retrieval logic
+    pass
 
+@tool("execute_sql_query")
+def execute_sql_query(query: str, database_path: str) -> List[tuple]:
+    """Execute the given SQL query and return results"""
+    # Placeholder for query execution logic
+    pass
+
+@tool("get_table_details")
+def get_table_details(table_name: str, database_path: str) -> str:
+    """Get detailed information about a specific table"""
+    # Placeholder for table details logic
+    pass
 
 class SQLQueryAssistant:
     '''We need to redefine graph again.
@@ -41,56 +51,51 @@ class SQLQueryAssistant:
         self.db_path = db_path or config.database_config['default_path']
         
         self.llm = init_chat_model(
-        config.llm_config['model'],
-        temperature=config.llm_config['temperature'],
-        max_tokens=config.llm_config['max_tokens'],
-        streaming=config.llm_config['streaming'])
+            config.llm_config['model'],
+            temperature=config.llm_config['temperature'],
+            max_tokens=config.llm_config['max_tokens'],
+            streaming=config.llm_config['streaming']
+        )
         
-        self.db = SQLDatabase.from_uri(f"sqlite:///{self.db_path}")
+        self.tools = [get_schema, execute_sql_query, get_table_details]
+        self.llm_with_tools = self.llm.bind_tools(self.tools)
         self.setup_graph()
         self.ground_truth_path = Path(__file__).parent.parent.parent / config.evaluation_config['ground_truth_path']
 
     def setup_graph(self):
-        def generate_sql(state: Dict[str, Any]):
-            query = state["query"]
-            # Get database schema
-            db_schema = self.db.get_table_info()
-            
-            template = config.templates_config.get('sql_query')
-            
-            prompt = ChatPromptTemplate.from_template(template)
-            chain = prompt | self.llm | StrOutputParser()
-            sql_query = chain.invoke({
-                "question": query,
-                "db_schema": db_schema
-            })
-            state["sql"] = sql_query
-            return state
+        sys_msg = SystemMessage(
+            content="You are a SQL assistant that helps users query databases. "
+                   "You can use the following tools: "
+                   "1. get_schema: Get database structure "
+                   "2. execute_sql_query: Run SQL queries "
+                   "3. get_table_details: Get detailed table information "
+                   "Always provide accurate and helpful responses."
+        )
+        
+        async def assistant(state: MessagesState):
+            return {"messages": [await self.llm_with_tools.ainvoke([sys_msg] + state["messages"])]}
 
-        def execute_query(state: Dict[str, Any]):
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            try:
-                results = cursor.execute(state["sql"]).fetchall()
-                state["results"] = results
-            except Exception as e:
-                state["error"] = str(e)
-            finally:
-                conn.close()
-            return state
+        # Graph
+        builder = StateGraph(MessagesState)
+        
+        # Define nodes
+        builder.add_node("assistant", assistant)
+        builder.add_node("tools", ToolNode(self.tools))
+        
+        # Define edges
+        builder.add_edge(START, "assistant")
+        builder.add_conditional_edges(
+            "assistant",
+            tools_condition,
+        )
+        builder.add_edge("tools", "assistant")
+        
+        self.graph = builder.compile()
 
-        workflow = Graph()
-        workflow.add_edge(START,'generate_sql')
-        workflow.add_node("generate_sql", generate_sql)
-        workflow.add_node("execute_query", execute_query)
-        workflow.add_edge("generate_sql", "execute_query")
-        workflow.add_edge("execute_query", END)
-
-        self.graph = workflow.compile()
-
-    def process_query(self, query: str) -> Dict[str, Any]:
-        result = self.graph.invoke({"query": query})
-        return result
+    async def process_query(self, query: str) -> str:
+        messages = [HumanMessage(content=query)]
+        result = await self.graph.ainvoke({"messages": messages})
+        return result['messages'][-1].content
 
     def evaluate_performance(self) -> Dict[str, Any]:
         """
@@ -161,24 +166,16 @@ class SQLQueryAssistant:
 
         return results
 
-def main():
-    # Create an instance of SQLQueryAssistant
+async def main():
     assistant = SQLQueryAssistant()
-    
-    # Test query
     test_input = "Show me all tables in the database"
     print(f"Testing query: {test_input}")
     
-    # Process the query
     try:
-        result = assistant.process_query(test_input)
-        print("\nQuery Results:")
-        print("SQL Query:", result.get("sql"))
-        print("Results:", result.get("results"))
-        if "error" in result:
-            print("Error:", result["error"])
+        result = await assistant.process_query(test_input)
+        print("\nResponse:", result)
     except Exception as e:
         print(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

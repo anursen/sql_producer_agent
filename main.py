@@ -1,5 +1,5 @@
 from services.agents.sql_assistant import SQLQueryAssistant
-from tools.schema_analyzer import SchemaAnalyzer
+from tools.get_schema import SchemaAnalyzer
 import re
 import json
 from config import config
