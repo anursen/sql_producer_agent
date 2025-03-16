@@ -20,6 +20,7 @@ database:
   pool_timeout: 30
   pool_recycle: 3600
 
+
 logging:
   level: INFO
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -56,4 +57,9 @@ tool_get_data_dictionary:
   file_path: "Database_Data_Dictionary_with_Descriptions.csv"
   filter_column: 'Column Name'
   return_columns: ['Column Name','Table Name','Data Type','Description']
+  max_results: 5  # Maximum number of results to return
 
+tool_execute_sql:
+  max_execution_time: 30  # Maximum time in seconds to execute the SQL query
+  return_format: 'json'  # Available formats: json, csv, list
+  max_results: 1  # Maximum number of results to return

@@ -69,6 +69,10 @@ class Config:
     @property
     def tool_get_data_dictionary(self) -> Dict[str, Any]:
         return self._config.get('tool_get_data_dictionary', {})
+    
+    @property
+    def tool_execute_sql(self) -> Dict[str, Any]:
+        return self._config.get('tool_execute_sql', {})
 
 # Global config instance
 config = Config()

@@ -23,12 +23,12 @@ def get_db_field_definition(column_name: str):
         get_db_field_definition("customer_id")
         # Returns:
         {
-            "message": "Field 'customer_id' found in data dictionary",
+            "Tool Message: >>> ": "1 results found:",
             "results": [
                 {
                     "column_name": "customer_id",
-                    "data_type": "int",
-                    "description": "Unique identifier for customers"
+                    "data_type": "INTEGER",
+                    "description": "Unique identifier for a customer"
                 }
             ]
         }
@@ -39,6 +39,7 @@ def get_db_field_definition(column_name: str):
     file_path = tool_config['file_path']
     filter_column = tool_config['filter_column']
     return_columns = tool_config['return_columns']
+    max_results = tool_config.get('max_results', 5)  # Default to 5 if not specified
     
     # Read file based on extension
     if file_path.endswith('.csv'):
@@ -52,11 +53,13 @@ def get_db_field_definition(column_name: str):
     if filtered_df.empty:
         return {"error": f"Field '{column_name}' not found in data dictionary"}
     else:
-        # Only return the configured columns
-        filtered_df = filtered_df[return_columns]
+        # Only return the configured columns and limit results
+        filtered_df = filtered_df[return_columns].head(max_results)
         results = filtered_df.to_dict('records')
         return {
-            "Tool Message: >>> ": f"{len(results)} results found:",
+            "Tool Message: >>> ": f"{len(results)} results found (limited to {max_results}):",
+            "row_count": len(results),
+            "columns": return_columns,
             "results": results
         }
 
