@@ -1,49 +1,44 @@
 import pandas as pd
+import sys
+from pathlib import Path
+from langchain_core.tools import tool
+
+
+# Add the project root to Python path
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
+
 from config import config
-from pydantic import BaseModel, Field
-from typing import Optional
 
-class DatabaseDictionaryEntry(BaseModel):
-    """Pydantic model for database dictionary entries
-    
-    Represents a single entry from the database data dictionary,
-    typically containing field descriptions and additional metadata
-    about database columns/tables.
-    """
-    field_description: Optional[str] = Field(
-        None, 
-        description="Detailed description of the database field/column"
-    )
-    metadata_value: Optional[str] = Field(
-        None, 
-        description="Additional metadata or specifications for the database field"
-    )
-    
-    class Config:
-        allow_none = True
-        frozen = True
 
-def get_db_field_definition(field_name: str) -> DatabaseDictionaryEntry:
-    """
-    Retrieve the database field definition from the data dictionary
-    
-    Looks up a database field's metadata and description from the data dictionary
-    file (Excel/CSV). The dictionary should contain field names in the first column,
-    descriptions in the second, and additional metadata in the third.
-    
+@tool
+def get_db_field_definition(column_name: str):
+    '''
+    Get the definition of a database field from a data dictionary.
     Args:
-        field_name: Name of the database field to look up
-        
+        column_name (str): The name of the database field to search for.
     Returns:
-        DatabaseDictionaryEntry: Field description and metadata from the data dictionary
-        
+        dict: A dictionary containing the field definition or an error message.
     Example:
-        >>> field_info = get_db_field_definition("customer_id")
-        >>> print(field_info.field_description)
-        "Unique identifier for the customer table"
-    """
+        get_db_field_definition("customer_id")
+        # Returns:
+        {
+            "message": "Field 'customer_id' found in data dictionary",
+            "results": [
+                {
+                    "column_name": "customer_id",
+                    "data_type": "int",
+                    "description": "Unique identifier for customers"
+                }
+            ]
+        }
+    '''
+    print(f"[TOOL][Api call] => get_db_field_definition({column_name})")
+
     tool_config = config.tool_get_data_dictionary
     file_path = tool_config['file_path']
+    filter_column = tool_config['filter_column']
+    return_columns = tool_config['return_columns']
     
     # Read file based on extension
     if file_path.endswith('.csv'):
@@ -51,18 +46,30 @@ def get_db_field_definition(field_name: str) -> DatabaseDictionaryEntry:
     else:
         df = pd.read_excel(file_path)
     
-    # Filter data
-    filtered_data = df.iloc[
-        df.loc[:, tool_config['filter_column']] == field_name,
-        tool_config['return_columns']
-    ]
+    # Filter data using the configured filter_column
+    filtered_df = df[df[filter_column].str.contains(column_name, case=False, na=False)]
     
-    if filtered_data.empty:
-        return DatabaseDictionaryEntry()
+    if filtered_df.empty:
+        return {"error": f"Field '{column_name}' not found in data dictionary"}
+    else:
+        # Only return the configured columns
+        filtered_df = filtered_df[return_columns]
+        results = filtered_df.to_dict('records')
+        return {
+            "Tool Message: >>> ": f"{len(results)} results found:",
+            "results": results
+        }
+
+if __name__ == "__main__":
+    # Get column name from user input
+    test_column = input("Enter column name to search (e.g. customer_id): ").strip()
     
-    # Get column names for the selected columns
-    selected_columns = df.columns[tool_config['return_columns']]
+    print(f"\nSearching for column: {test_column}")
+    result = get_db_field_definition(test_column)
     
-    # Create dictionary with descriptive keys and create Pydantic model
-    data_dict = dict(zip(['field_description', 'metadata_value'], filtered_data.iloc[0]))
-    return DatabaseDictionaryEntry(**data_dict)
+    if "error" in result:
+        print(f"\nError: {result['error']}")
+    else:
+        print(result)
+
+

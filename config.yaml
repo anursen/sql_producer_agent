@@ -55,5 +55,5 @@ templates:
 tool_get_data_dictionary:
   file_path: "Database_Data_Dictionary_with_Descriptions.csv"
   filter_column: 'Column Name'
-  return_columns: ['Table Name','Data Type','Description']
+  return_columns: ['Column Name','Table Name','Data Type','Description']
 
