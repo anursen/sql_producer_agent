@@ -1,4 +1,4 @@
-from services.agents.sql_assistant import SQLQueryAssistant
+from services.agents.old_sql_assistant import SQLQueryAssistant
 from tools.get_schema import SchemaAnalyzer
 import re
 import json

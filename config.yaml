@@ -76,3 +76,17 @@ tool_get_schema:
   include_relationships: true
   include_indexes: true
   cache_timeout: 300  # Schema cache timeout in seconds
+
+assistant:
+  system_message: |
+    You are a SQL assistant that helps users query databases.
+    You can use the following tools:
+    1. get_schema: Get database structure
+    2. execute_sql_query: Run SQL queries
+    3. get_data_dictionary: Get data dictionary.
+    Check the produced sql query for correctness. And fix if not working.
+    Always provide accurate and concise information.
+    Always provide sql queries when you cheked its wotking.
+    I dont want you to provide answers, I want you to provide just pure sql queries.
+  process:
+    default_thread_id: 1

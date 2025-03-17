@@ -1,23 +1,24 @@
 # SQL Producer Agent
 
-An intelligent SQL query assistant powered by LangChain and GPT-4 that helps users generate and execute SQL queries through natural language interactions.
+An intelligent SQL query assistant powered by LangChain and GPT that helps users generate and execute SQL queries through natural language interactions.
 
 ## Features
 
-- Natural language to SQL query conversion
+- Natural language to SQL query conversion with contextual understanding
+- Multi-database support (SQLite, MongoDB, MySQL, PostgreSQL)
 - Interactive CLI and Web interface
-- Support for multiple database schemas
 - Real-time query execution and validation
 - Performance evaluation against ground truth data
 - Memory persistence for conversation context
+- Built-in data dictionary and schema analysis tools
 - Docker and Kubernetes deployment support
 
 ## Prerequisites
 
 - Python 3.9+
-- Docker (optional)
-- Kubernetes (optional)
 - OpenAI API key
+- Docker (optional)
+- Database system (SQLite by default)
 
 ## Installation
 
@@ -42,18 +43,27 @@ pip install -r requirements.txt
 
 4. Set up environment variables:
 ```bash
-cp .env.example .env
-# Edit .env and add your OpenAI API key
+# Add to .env file
+OPENAI_API_KEY=your_api_key
+ENVIRONMENT=development
 ```
 
 ## Usage
 
 ### CLI Interface
 
-Run the main application:
+Launch the CLI application:
 ```bash
 python main.py
 ```
+
+Available commands:
+- Execute queries
+- Toggle debug mode
+- Toggle SQL-only mode
+- Show database schema
+- Run performance evaluation
+- Get help
 
 ### Web Interface
 
@@ -69,6 +79,12 @@ Build and run using Docker Compose:
 ```bash
 docker-compose up -d
 ```
+
+Services included:
+- PostgreSQL database
+- pgAdmin interface
+- MongoDB (for memory persistence)
+- Web application
 
 ### Kubernetes Deployment
 
@@ -86,68 +102,73 @@ kubectl apply -f k8s/
 
 ```
 sql_producer_agent/
-├── app.py              # FastAPI web application
-├── config.py           # Configuration management
-├── main.py            # CLI application
-├── requirements.txt    # Project dependencies
-├── docker-compose.yml  # Docker compose configuration
-├── k8s/               # Kubernetes manifests
+├── app.py                  # FastAPI web application
+├── config.py              # Configuration management
+├── config.yaml           # Configuration settings
+├── main.py              # CLI application
+├── requirements.txt     # Project dependencies
+├── docker-compose.yml  # Docker configuration
 ├── services/          # Core services
-├── tools/             # Utility tools
-├── static/            # Web static files
-└── templates/         # HTML templates
+│   ├── agents/       # LLM agents
+│   └── llm_service.py # LLM service
+├── tools/            # Utility tools
+│   ├── execute_sql.py
+│   ├── get_schema.py
+│   └── query_data_dictionary.py
+├── utils/           # Helper utilities
+├── static/         # Web static files
+└── templates/      # HTML templates
 ```
 
 ## Configuration
 
-The application can be configured through:
-- Environment variables
-- config.yaml file
-- CLI arguments
+The application is configured through `config.yaml` and supports:
 
-Key configuration options:
-- Database settings
-- LLM model parameters
-- API endpoints
+- LLM settings (model, temperature, tokens)
+- Database connections (multiple types)
+- API settings
+- Evaluation parameters
+- Tool configurations
+- System messages
 - Logging preferences
 
-## Features in Detail
+## Available Tools
 
-### Schema Analysis
-- Automatic database schema detection
-- Table relationship mapping
-- Index analysis
+1. Schema Analysis (`get_schema`)
+   - Database structure inspection
+   - Relationship mapping
+   - Index analysis
 
-### Query Generation
-- Natural language processing
-- Context-aware query generation
-- SQL syntax validation
+2. SQL Execution (`execute_sql_query`)
+   - Query execution
+   - Result formatting
+   - Error handling
 
-### Memory Management
-- Conversation persistence
-- Context maintenance
-- MongoDB integration for storage
+3. Data Dictionary (`get_db_field_definition`)
+   - Column descriptions
+   - Data type information
+   - Table relationships
 
-### Performance Evaluation
+## Performance Evaluation
+
+The system includes a comprehensive evaluation framework:
 - Ground truth comparison
 - Similarity scoring
 - Error analysis
+- Performance metrics
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+3. Make your changes
+4. Run tests
+5. Submit a pull request
 
 ## License
 
-MIT License
+MIT License - See LICENSE file for details
 
-## Acknowledgments
+## Support
 
-- LangChain
-- OpenAI
-- FastAPI
-- SQLAlchemy
+For issues and feature requests, please use the GitHub issue tracker.

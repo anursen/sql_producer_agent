@@ -1,2 +1,2 @@
-from . import llm_service
-from ..tools import execute_sql
+from services import llm_service
+from tools import execute_sql

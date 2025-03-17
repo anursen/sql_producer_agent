@@ -78,5 +78,9 @@ class Config:
     def tool_get_schema(self) -> Dict[str, Any]:
         return self._config.get('tool_get_schema', {})
 
+    @property
+    def assistant_config(self) -> Dict[str, Any]:
+        return self._config.get('assistant', {})
+
 # Global config instance
 config = Config()

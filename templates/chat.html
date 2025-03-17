@@ -1,16 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SQL Compiler Chat</title>
+    <title>SQL Query Assistant</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <div class="chat-container">
-        <h1>SQL Query Assistant</h1>
+        <div class="chat-header">
+            <h1>SQL Query Assistant</h1>
+        </div>
         <div id="chat-messages" class="chat-messages"></div>
+        <div id="typing-indicator" class="typing-indicator" style="display: none;">
+            Assistant is thinking...
+        </div>
         <div class="input-container">
-            <input type="text" id="user-input" placeholder="Enter your SQL query or question...">
-            <button onclick="sendMessage()">Send</button>
+            <input type="text" id="user-input" placeholder="Enter your SQL query or question..." 
+                   onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button id="send-button" onclick="sendMessage()">Send</button>
         </div>
     </div>
     <script src="/static/js/chat.js"></script>
