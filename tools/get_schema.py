@@ -23,7 +23,8 @@ def get_schema(max_tables: str) -> Dict:
         get_database_schema(partial=True)
 
     '''
-    
+    print(f"[TOOL] get_schema {max_tables}")
+
     database_config = config.database_config
     tool_config = config.tool_get_schema
     db_type = database_config.get('type', 'sqlite')

@@ -6,6 +6,7 @@ from pathlib import Path
 import asyncio
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
+import time
 
 # Add project root to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -58,8 +59,8 @@ class SQLQueryAssistant:
                "3. get_data_dictionary: Get data dictionary. "
                "Check the produced sql query for correctness. And fix if not working. "
                "Always provide accurate and concise information. "
-               "If user is asking for result provide the result from the database. "
-               "otherwise provide the SQL query."
+               "Always provide sql queries when you cheked its wotking. "
+               "I dont want you to provide answers, I want you to provide just pure sql queries. "
         )        
         async def assistant(state: MessagesState):
             return {"messages": [await self.llm_with_tools.ainvoke([sys_msg] + state["messages"])]}
@@ -87,14 +88,21 @@ class SQLQueryAssistant:
         result = await self.graph.ainvoke({"messages": messages},config)
         return result['messages'][-1].content
 
-    async def evaluate_performance(self) -> Dict[str, Any]:
+    async def evaluate_performance(self, num_queries: int = None) -> Dict[str, Any]:
         """
         Evaluates the SQL assistant's performance against ground truth data.
-        Returns a dictionary containing performance metrics.
+        
+        Args:
+            num_queries (int, optional): Number of queries to evaluate. If None, evaluates all queries.
+            
+        Returns:
+            Dict[str, Any]: Dictionary containing performance metrics
         """
         # Load ground truth data
         try:
-            df = pd.read_csv(self.ground_truth_path).head(5)
+            df = pd.read_csv(self.ground_truth_path)
+            if num_queries:
+                df = df.head(num_queries)
         except Exception as e:
             return {"error": f"Failed to load ground truth data: {str(e)}"}
 
@@ -108,14 +116,39 @@ class SQLQueryAssistant:
             "failed_queries": 0,
             "average_similarity": 0.0,
             "similarities": [],
-            "failed_cases": []
+            "failed_cases": [],
+            "execution_time": 0.0
         }
+
+        start_time = time.time()
 
         for idx, row in df.iterrows():
             try:
                 # Get assistant's SQL query
                 assistant_result = await self.process_query(row["User Input"])
-                assistant_sql = assistant_result.get("sql", "").lower().strip()
+                
+                # Extract SQL query from assistant's response
+                # Look for SQL query in the response - it could be in different formats
+                assistant_sql = ""
+                response_lower = assistant_result.lower()
+                
+                # Common patterns to identify SQL in response
+                sql_markers = ["select", "insert", "update", "delete", "with"]
+                for line in response_lower.split('\n'):
+                    line = line.strip()
+                    if any(line.startswith(marker) for marker in sql_markers):
+                        assistant_sql = line
+                        break
+                
+                if not assistant_sql:
+                    # If no SQL found, try to extract code block if present
+                    if "```sql" in response_lower:
+                        sql_block = response_lower.split("```sql")[1].split("```")[0]
+                        assistant_sql = sql_block.strip()
+                    elif "```" in response_lower:
+                        sql_block = response_lower.split("```")[1].split("```")[0]
+                        assistant_sql = sql_block.strip()
+
                 ground_truth_sql = row["Ground Truth SQL"].lower().strip()
 
                 # Calculate similarity
@@ -124,6 +157,7 @@ class SQLQueryAssistant:
                     similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
                     
                     results["similarities"].append({
+                        "query_id": idx + 1,
                         "query": row["User Input"],
                         "similarity": similarity,
                         "assistant_sql": assistant_sql,
@@ -135,6 +169,7 @@ class SQLQueryAssistant:
                     else:
                         results["failed_queries"] += 1
                         results["failed_cases"].append({
+                            "query_id": idx + 1,
                             "query": row["User Input"],
                             "assistant_sql": assistant_sql,
                             "ground_truth_sql": ground_truth_sql,
@@ -142,17 +177,29 @@ class SQLQueryAssistant:
                         })
                 else:
                     results["failed_queries"] += 1
+                    results["failed_cases"].append({
+                        "query_id": idx + 1,
+                        "query": row["User Input"],
+                        "error": "No SQL query found in response"
+                    })
                     
             except Exception as e:
                 results["failed_queries"] += 1
                 results["failed_cases"].append({
+                    "query_id": idx + 1,
                     "query": row["User Input"],
                     "error": str(e)
                 })
 
-        # Calculate average similarity
+        # Calculate statistics
+        results["execution_time"] = time.time() - start_time
         if results["similarities"]:
-            results["average_similarity"] = np.mean([s["similarity"] for s in results["similarities"]])
+            similarities = [s["similarity"] for s in results["similarities"]]
+            results["average_similarity"] = np.mean(similarities)
+            results["median_similarity"] = np.median(similarities)
+            results["min_similarity"] = np.min(similarities)
+            results["max_similarity"] = np.max(similarities)
+            results["success_rate"] = (results["successful_queries"] / results["total_queries"]) * 100
 
         return results
 
@@ -189,10 +236,56 @@ async def main():
                 continue
                 
             # Handle evaluation command    
-            if user_input.lower() == 'eval':
+            if user_input.lower().startswith('eval'):
                 print("\nRunning performance evaluation...")
-                eval_results = await assistant.evaluate_performance()
-                print("\nEvaluation results:", eval_results)
+                # Parse number of queries if provided (eval 5)
+                num_queries = None
+                if len(user_input.split()) > 1:
+                    try:
+                        num_queries = int(user_input.split()[1])
+                    except ValueError:
+                        print("Invalid number of queries specified")
+                        continue
+                
+                eval_results = await assistant.evaluate_performance(num_queries)
+                print("\n=== Evaluation Summary ===")
+                print(f"Total queries evaluated: {eval_results['total_queries']}")
+                print(f"Successful queries: {eval_results['successful_queries']}")
+                print(f"Failed queries: {eval_results['failed_queries']}")
+                print(f"Success rate: {eval_results.get('success_rate', 0):.2f}%")
+                print(f"Average similarity: {eval_results.get('average_similarity', 0):.2f}")
+                print(f"Execution time: {eval_results['execution_time']:.2f} seconds")
+                
+                print("\n=== Detailed Results ===")
+                # Print successful cases
+                if eval_results['similarities']:
+                    print("\nSuccessful Cases:")
+                    for case in eval_results['similarities']:
+                        if case['similarity'] >= config.evaluation_config.get('similarity_threshold', 0.8):
+                            print("\n" + "="*50)
+                            print(f"Query {case['query_id']}: {case['query']}")
+                            print("\nGround Truth SQL:")
+                            print(case['ground_truth_sql'])
+                            print("\nAssistant SQL:")
+                            print(case['assistant_sql'])
+                            print(f"Similarity Score: {case['similarity']:.2f}")
+                
+                # Print failed cases
+                if eval_results['failed_cases']:
+                    print("\nFailed Cases:")
+                    for case in eval_results['failed_cases']:
+                        print("\n" + "="*50)
+                        print(f"Query {case['query_id']}: {case['query']}")
+                        if 'error' in case:
+                            print(f"Error: {case['error']}")
+                        else:
+                            print("\nGround Truth SQL:")
+                            print(case['ground_truth_sql'])
+                            print("\nAssistant SQL:")
+                            print(case['assistant_sql'])
+                            print(f"Similarity Score: {case['similarity']:.2f}")
+                
+                print("\n" + "="*50)
                 continue
             
             # Process regular queries

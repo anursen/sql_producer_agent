@@ -27,7 +27,8 @@ def execute_sql_query(query: str) -> dict:
             - format: Result format
             - error: Error message if failed
     '''
-    try:   
+    try:
+        print(f"[TOOL] execute_sql_query {query}")
         # Get configuration
         tool_config = config.tool_execute_sql
         database_config = config.database_config
