@@ -76,5 +76,4 @@ tool_get_schema:
   exclude_system_tables: true
   include_relationships: true
   include_indexes: true
-  max_tables: 100
   cache_timeout: 300  # Schema cache timeout in seconds

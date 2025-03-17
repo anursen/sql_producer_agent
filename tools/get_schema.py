@@ -11,7 +11,7 @@ from config import config
 from tools.schema_getters import SQLiteSchemaGetter, MongoDBSchemaGetter, MySQLSchemaGetter, PostgreSQLSchemaGetter
 
 @tool
-def get_database_schema(partial:bool=False) -> Dict:
+def get_database_schema(max_tables: str) -> Dict:
     '''
     Get the schema of the database.
     Args:
@@ -21,7 +21,7 @@ def get_database_schema(partial:bool=False) -> Dict:
     Example:
         get_database_schema(partial=False)
         get_database_schema(partial=True)
-            
+
     '''
     
     database_config = config.database_config
