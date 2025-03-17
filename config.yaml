@@ -12,14 +12,22 @@ llm:
   timeout: 30
 
 database:
+  type: "sqlite"  # or "mongodb", "mysql", "postgresql"
   default_path: chinook.db
+  # For MongoDB
+  connection_string: "mongodb://localhost:27017/"
+  database_name: "your_database"
+  # For MySQL/PostgreSQL
+  host: "localhost"
+  port: 3306  # 5432 for PostgreSQL
+  user: "root"
+  password: "password"
   timeout: 30
   connection_retries: 3
   pool_size: 5
   max_overflow: 10
   pool_timeout: 30
   pool_recycle: 3600
-
 
 logging:
   level: INFO
@@ -63,3 +71,10 @@ tool_execute_sql:
   max_execution_time: 30  # Maximum time in seconds to execute the SQL query
   return_format: 'json'  # Available formats: json, csv, list
   max_results: 1  # Maximum number of results to return
+
+tool_get_schema:
+  exclude_system_tables: true
+  include_relationships: true
+  include_indexes: true
+  max_tables: 100
+  cache_timeout: 300  # Schema cache timeout in seconds

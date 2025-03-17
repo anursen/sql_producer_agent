@@ -15,3 +15,6 @@ langgraph-checkpoint-postgres
 scikit-learn
 pandas
 numpy
+pymongo
+mysql-connector-python
+psycopg2-binary
