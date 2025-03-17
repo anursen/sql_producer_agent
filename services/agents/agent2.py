@@ -11,32 +11,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
 
-from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import tools_condition, ToolNode
-from typing import Dict, Any, List
+from typing import Dict, Any
 from config import config
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.tools import tool
 from langchain.chat_models import init_chat_model
-
-
-@tool("get_schema")
-def get_schema(database_path: str) -> str:
-    """Get the database schema information"""
-    # Placeholder for schema retrieval logic
-    pass
-
-@tool("execute_sql_query")
-def execute_sql_query(query: str, database_path: str) -> List[tuple]:
-    """Execute the given SQL query and return results"""
-    # Placeholder for query execution logic
-    pass
-
-@tool("get_table_details")
-def get_table_details(table_name: str, database_path: str) -> str:
-    """Get detailed information about a specific table"""
-    # Placeholder for table details logic
-    pass
+from langgraph.graph import START, MessagesState, StateGraph
+from tools.get_schema import get_schema
+from tools.execute_sql import execute_sql_query
+from tools.query_data_dictionary import get_db_field_definition
+from langgraph.checkpoint.memory import MemorySaver
 
 class SQLQueryAssistant:
     '''We need to redefine graph again.
@@ -49,6 +33,7 @@ class SQLQueryAssistant:
     
     def __init__(self, db_path=None):
         self.db_path = db_path or config.database_config['default_path']
+        self.memory = MemorySaver()
         
         self.llm = init_chat_model(
             config.llm_config['model'],
@@ -57,21 +42,25 @@ class SQLQueryAssistant:
             streaming=config.llm_config['streaming']
         )
         
-        self.tools = [get_schema, execute_sql_query, get_table_details]
+        self.tools = [get_schema, execute_sql_query, get_db_field_definition]
         self.llm_with_tools = self.llm.bind_tools(self.tools)
         self.setup_graph()
         self.ground_truth_path = Path(__file__).parent.parent.parent / config.evaluation_config['ground_truth_path']
 
     def setup_graph(self):
+        # Define the system message and tools
+        # Define system message with clear tool descriptions and instructions
         sys_msg = SystemMessage(
             content="You are a SQL assistant that helps users query databases. "
-                   "You can use the following tools: "
-                   "1. get_schema: Get database structure "
-                   "2. execute_sql_query: Run SQL queries "
-                   "3. get_table_details: Get detailed table information "
-                   "Always provide accurate and helpful responses."
-        )
-        
+               "You can use the following tools: "
+               "1. get_schema: Get database structure "
+               "2. execute_sql_query: Run SQL queries "
+               "3. get_data_dictionary: Get data dictionary. "
+               "Check the produced sql query for correctness. And fix if not working. "
+               "Always provide accurate and concise information. "
+               "If user is asking for result provide the result from the database. "
+               "otherwise provide the SQL query."
+        )        
         async def assistant(state: MessagesState):
             return {"messages": [await self.llm_with_tools.ainvoke([sys_msg] + state["messages"])]}
 
@@ -90,14 +79,15 @@ class SQLQueryAssistant:
         )
         builder.add_edge("tools", "assistant")
         
-        self.graph = builder.compile()
+        self.graph = builder.compile(checkpointer=self.memory)
 
     async def process_query(self, query: str) -> str:
         messages = [HumanMessage(content=query)]
-        result = await self.graph.ainvoke({"messages": messages})
+        config = {"configurable": {"thread_id": 1}}
+        result = await self.graph.ainvoke({"messages": messages},config)
         return result['messages'][-1].content
 
-    def evaluate_performance(self) -> Dict[str, Any]:
+    async def evaluate_performance(self) -> Dict[str, Any]:
         """
         Evaluates the SQL assistant's performance against ground truth data.
         Returns a dictionary containing performance metrics.
@@ -124,7 +114,7 @@ class SQLQueryAssistant:
         for idx, row in df.iterrows():
             try:
                 # Get assistant's SQL query
-                assistant_result = self.process_query(row["User Input"])
+                assistant_result = await self.process_query(row["User Input"])
                 assistant_sql = assistant_result.get("sql", "").lower().strip()
                 ground_truth_sql = row["Ground Truth SQL"].lower().strip()
 
@@ -168,14 +158,60 @@ class SQLQueryAssistant:
 
 async def main():
     assistant = SQLQueryAssistant()
-    test_input = "Show me all tables in the database"
-    print(f"Testing query: {test_input}")
     
-    try:
-        result = await assistant.process_query(test_input)
-        print("\nResponse:", result)
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
+    print("\n=== SQL Query Assistant Chatbot ===")
+    print("Type 'exit' or 'quit' to end the conversation")
+    print("Type 'help' for command list")
+    print("===================================\n")
+
+    while True:
+        try:
+            # Get user input
+            user_input = input("You: ").strip()
+            
+            # Handle exit commands
+            if user_input.lower() in ['exit', 'quit']:
+                print("\nGoodbye! Thanks for using SQL Query Assistant.")
+                break
+                
+            # Handle help command    
+            if user_input.lower() == 'help':
+                print("\nAvailable commands:")
+                print("- exit/quit: End the conversation")
+                print("- help: Show this help message")
+                print("- clear: Clear the screen")
+                print("- eval: Run performance evaluation")
+                continue
+                
+            # Handle clear command
+            if user_input.lower() == 'clear':
+                os.system('cls' if os.name == 'nt' else 'clear')
+                continue
+                
+            # Handle evaluation command    
+            if user_input.lower() == 'eval':
+                print("\nRunning performance evaluation...")
+                eval_results = await assistant.evaluate_performance()
+                print("\nEvaluation results:", eval_results)
+                continue
+            
+            # Process regular queries
+            if user_input:
+                print("\nAssistant: ", end="")
+                try:
+                    result = await assistant.process_query(user_input)
+                    print(result)
+                except Exception as e:
+                    print(f"Sorry, I encountered an error: {str(e)}")
+            
+            print() # Add blank line for readability
+            
+        except KeyboardInterrupt:
+            print("\n\nGoodbye! Thanks for using SQL Query Assistant.")
+            break
+        except Exception as e:
+            print(f"\nAn unexpected error occurred: {str(e)}")
+            print("Please try again.")
 
 if __name__ == "__main__":
     asyncio.run(main())

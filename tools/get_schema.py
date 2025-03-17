@@ -11,7 +11,7 @@ from config import config
 from tools.schema_getters import SQLiteSchemaGetter, MongoDBSchemaGetter, MySQLSchemaGetter, PostgreSQLSchemaGetter
 
 @tool
-def get_database_schema(max_tables: str) -> Dict:
+def get_schema(max_tables: str) -> Dict:
     '''
     Get the schema of the database.
     Args:
@@ -71,5 +71,5 @@ def get_database_schema(max_tables: str) -> Dict:
         return {"error": f"Failed to get database schema: {str(e)}"}
 
 if __name__ == "__main__":
-    result = get_database_schema('get_all')
+    result = get_schema('get_all')
     print(result)

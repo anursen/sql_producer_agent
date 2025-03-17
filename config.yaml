@@ -68,7 +68,6 @@ tool_get_data_dictionary:
   max_results: 5  # Maximum number of results to return
 
 tool_execute_sql:
-  max_execution_time: 30  # Maximum time in seconds to execute the SQL query
   return_format: 'json'  # Available formats: json, csv, list
   max_results: 1  # Maximum number of results to return
 
